@@ -1,0 +1,41 @@
+{
+  "name": "@nexus/platform",
+  "version": "1.0.0",
+  "description": "Nexus Core ERP Platform - Modular business operating system for SMBs",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "frontend",
+    "shared/*"
+  ],
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "dev": "concurrently \"npm run dev:gateway\" \"npm run dev:identity\" \"npm run dev:tenant\" \"npm run dev:payroll\" \"npm run dev:frontend\"",
+    "dev:gateway": "cd services/api-gateway && npm run dev",
+    "dev:identity": "cd services/identity-service && npm run dev",
+    "dev:tenant": "cd services/tenant-service && npm run dev",
+    "dev:payroll": "cd services/payroll-service && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "setup:db": "node scripts/setup-db.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "author": "Nexus Platform Team",
+  "license": "PROPRIETARY"
+}

@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: nexus_dev
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - nexus-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nexus-network
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: nexus
+      RABBITMQ_DEFAULT_PASS: nexus_dev_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - nexus-network
+
+  # Identity Service
+  identity-service:
+    build:
+      context: ./services/identity-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_identity
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev_jwt_secret_key_change_in_production
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./services/identity-service:/app
+      - /app/node_modules
+    networks:
+      - nexus-network
+
+  # Tenant Service
+  tenant-service:
+    build:
+      context: ./services/tenant-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_tenant
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./services/tenant-service:/app
+      - /app/node_modules
+    networks:
+      - nexus-network
+
+  # Payroll Service
+  payroll-service:
+    build:
+      context: ./services/payroll-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_payroll
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+      IDENTITY_SERVICE_URL: http://identity-service:3001
+    ports:
+      - "3003:3003"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - identity-service
+    volumes:
+      - ./services/payroll-service:/app
+      - /app/node_modules
+    networks:
+      - nexus-network
+
+  # Frontend Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - nexus-network
+
+  # API Gateway (Kong)
+  kong:
+    image: kong:3.4-alpine
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+    ports:
+      - "8080:8000"
+      - "8001:8001"
+    volumes:
+      - ./infrastructure/kong:/kong/declarative
+    depends_on:
+      - identity-service
+      - tenant-service
+      - payroll-service
+    networks:
+      - nexus-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  nexus-network:
+    driver: bridge

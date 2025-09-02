@@ -1,0 +1,50 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "name": "Acme Corporation",
+      "domain": "acme",
+      "status": "active",
+      "settings": {
+        "currency": "LKR",
+        "features": [
+          "basic_features",
+          "advanced_features"
+        ],
+        "language": "en",
+        "maxUsers": 100,
+        "timezone": "Asia/Colombo",
+        "dateFormat": "DD/MM/YYYY"
+      },
+      "subscriptionId": "a47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "createdAt": "2025-09-02T08:20:41.296Z",
+      "updatedAt": "2025-09-02T08:20:41.296Z"
+    },
+    {
+      "id": "f47ac10b-58cc-4372-a567-0e02b2c3d480",
+      "name": "TechStart Solutions",
+      "domain": "techstart",
+      "status": "active",
+      "settings": {
+        "currency": "LKR",
+        "features": [
+          "basic_features"
+        ],
+        "language": "en",
+        "maxUsers": 25,
+        "timezone": "Asia/Colombo",
+        "dateFormat": "DD/MM/YYYY"
+      },
+      "subscriptionId": "a47ac10b-58cc-4372-a567-0e02b2c3d480",
+      "createdAt": "2025-09-02T08:20:41.296Z",
+      "updatedAt": "2025-09-02T08:20:41.296Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2,
+    "pages": 1
+  }
+}

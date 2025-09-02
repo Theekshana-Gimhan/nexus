@@ -1,0 +1,189 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Nexus Identity Service API",
+    "version": "1.0.0",
+    "description": "OpenAPI spec for identity service endpoints (subset)."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string" },
+          "firstName": { "type": "string" },
+          "lastName": { "type": "string" },
+          "tenantId": { "type": "string" },
+          "isActive": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "roles": { "type": "array", "items": { "$ref": "#/components/schemas/Role" } }
+        }
+        ,
+        "example": {
+          "id": "d1e2f3a4-b5c6-7890-defa-234567890123",
+          "email": "admin@nexus.lk",
+          "firstName": "Admin",
+          "lastName": "User",
+          "tenantId": "b0a8c6b0-5c3e-4d7f-8b9a-1e2f3a4b5c6d",
+          "isActive": true,
+          "createdAt": "2025-09-01T12:00:00Z",
+          "roles": [{ "id": "b1c2d3e4-f5a6-7890-bcde-f12345678901", "name": "admin", "description": "Administrator" }]
+        }
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+        ,
+        "example": {
+          "id": "b1c2d3e4-f5a6-7890-bcde-f12345678901",
+          "name": "manager",
+          "description": "Manager role with elevated privileges"
+        }
+      },
+      "Permission": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "module": { "type": "string" },
+          "action": { "type": "string" },
+          "resource": { "type": "string" }
+        }
+        ,
+        "example": {
+          "id": "p1a2b3c4-d5e6-7890-abcd-1234567890ab",
+          "name": "Read Users",
+          "module": "identity",
+          "action": "read",
+          "resource": "users"
+        }
+      },
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "data": { "type": "object" },
+          "error": { "type": "string" }
+        }
+        ,
+        "example": {
+          "success": true,
+          "data": { "message": "Operation completed" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/refresh": {
+      "post": {
+        "summary": "Refresh access token",
+        "description": "Accepts a refresh token and returns a new access token with recomputed permissions.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "refreshToken": { "type": "string" } },
+                "required": ["refreshToken"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New access token returned",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" },
+                "example": { "success": true, "data": { "accessToken": "eyJhb...", "user": { "$ref": "#/components/schemas/User" } } }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid refresh token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" },
+                "example": { "success": false, "error": "Invalid refresh token" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/roles": {
+      "post": {
+        "summary": "Assign role to user",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "roleId": { "type": "string" } },
+                "required": ["roleId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role assigned",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" },
+                "example": { "success": true, "data": { "message": "Role assigned successfully" } }
+              }
+            }
+          },
+          "400": { "description": "Bad request" }
+        }
+      }
+    },
+    "/users/{userId}/roles/{roleId}": {
+      "delete": {
+        "summary": "Remove role from user",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "roleId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Role removed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiResponse" },
+                "example": { "success": true, "data": { "message": "Role removed successfully" } }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    }
+  }
+}
