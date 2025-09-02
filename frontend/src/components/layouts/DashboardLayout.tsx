@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import {
   HomeIcon,
   UsersIcon,
+  BuildingOfficeIcon,
   CogIcon,
   Bars3Icon,
   XMarkIcon,
@@ -16,6 +17,7 @@ interface DashboardLayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+  { name: 'Tenants', href: '/tenants', icon: BuildingOfficeIcon },
   { name: 'Users', href: '/users', icon: UsersIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ];

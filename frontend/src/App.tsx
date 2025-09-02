@@ -8,6 +8,7 @@ import DashboardLayout from '@/components/layouts/DashboardLayout';
 // Import pages
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
+import TenantsPage from '@/pages/TenantsPage';
 import UsersPage from '@/pages/UsersPage';
 import SettingsPage from '@/pages/SettingsPage';
 
@@ -46,6 +47,7 @@ function App() {
             <DashboardLayout>
               <Routes>
                 <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/tenants" element={<TenantsPage />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

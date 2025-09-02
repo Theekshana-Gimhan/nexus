@@ -9,7 +9,8 @@ interface User {
   lastName: string;
   role: string;
   permissions: string[];
-  tenantId: string;
+  tenantId?: string;
+  tenantName?: string;
 }
 
 interface AuthState {
@@ -21,11 +22,12 @@ interface AuthState {
   logout: () => void;
   setLoading: (loading: boolean) => void;
   setUser: (user: User) => void;
+  initializeAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -35,34 +37,47 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         
         try {
-          // For development: check demo credentials
+          // For development: check demo credentials first
           if (email === 'admin@nexus.lk' && password === 'admin123') {
-            const mockUser = {
+            const mockUser: User = {
               id: '1',
               email: 'admin@nexus.lk',
               firstName: 'Admin',
               lastName: 'User',
               role: 'admin',
-              permissions: ['read', 'write', 'delete'],
-              tenantId: 'demo-tenant'
+              permissions: ['tenant:read', 'tenant:create', 'tenant:update', 'tenant:delete', 'user:read', 'user:create'],
+              tenantId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+              tenantName: 'Acme Corporation'
             };
+            
+            const mockToken = 'demo-token-123';
+            
+            // Set the token in API client
+            api.defaults.headers.common['Authorization'] = `Bearer ${mockToken}`;
             
             set({
               user: mockUser,
-              token: 'demo-token-123',
+              token: mockToken,
               isAuthenticated: true,
               isLoading: false,
             });
             return;
           }
           
-          // Try real API call
-          const response = await api.post('/auth/login', { email, password });
-          const data = response.data;
+          // Try real API call through the API Gateway
+          const response = await api.post('/api/v1/auth/login', { 
+            email, 
+            password 
+          });
+          
+          const { token, user } = response.data;
+          
+          // Set the token in API client
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           set({
-            user: data.user,
-            token: data.token,
+            user,
+            token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -80,6 +95,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // Clear token from API client
+        delete api.defaults.headers.common['Authorization'];
+        
         set({
           user: null,
           token: null,
@@ -94,6 +112,27 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user: User) => {
         set({ user, isAuthenticated: true });
+      },
+
+      initializeAuth: async () => {
+        const state = get();
+        if (state.token && !state.isAuthenticated) {
+          try {
+            // Set token in API client
+            api.defaults.headers.common['Authorization'] = `Bearer ${state.token}`;
+            
+            // Verify token is still valid by calling a protected endpoint
+            const response = await api.get('/api/v1/auth/me');
+            set({ user: response.data, isAuthenticated: true });
+          } catch (error) {
+            // Token is invalid, clear auth state
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+            });
+          }
+        }
       },
     }),
     {

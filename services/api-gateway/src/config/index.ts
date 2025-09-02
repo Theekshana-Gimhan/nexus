@@ -4,7 +4,7 @@ config();
 
 export const CONFIG = {
   // Server
-  PORT: parseInt(process.env.PORT || '3000'),
+  PORT: parseInt(process.env.PORT || '3006'),
   NODE_ENV: process.env.NODE_ENV || 'development',
   
   // JWT
@@ -13,7 +13,7 @@ export const CONFIG = {
   // Service URLs
   SERVICES: {
     IDENTITY: process.env.IDENTITY_SERVICE_URL || 'http://localhost:3001',
-    TENANT: process.env.TENANT_SERVICE_URL || 'http://localhost:3002',
+    TENANT: process.env.TENANT_SERVICE_URL || 'http://localhost:3005',
     USER: process.env.USER_SERVICE_URL || 'http://localhost:3003',
     PAYROLL: process.env.PAYROLL_SERVICE_URL || 'http://localhost:3004'
   },
