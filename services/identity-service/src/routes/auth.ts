@@ -13,6 +13,9 @@ router.post('/register', AuthController.register);
 // POST /auth/refresh
 router.post('/refresh', AuthController.refreshToken);
 
+// POST /auth/service-token - client credentials
+router.post('/service-token', AuthController.serviceToken);
+
 // GET /auth/profile (protected route)
 router.get('/profile', authenticateToken, AuthController.getProfile);
 

@@ -1,0 +1,151 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_password
+      POSTGRES_DB: nexus_qbo_connector
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  quickbooks-connector:
+    build:
+      context: ./services/quickbooks-connector
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3010
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_qbo_connector
+      JWT_SECRET: dev_jwt_secret_key_change_in_production
+      SERVICE_CLIENT_ID: quickbooks
+      SERVICE_CLIENT_SECRET: quickbooks_secret
+      IDENTITY_BASE: "http://identity-service:3001"
+    ports:
+      - "3010:3010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./services/quickbooks-connector:/usr/src/app
+    command: ["sh", "-c", "npm run dev"]
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: nexus
+      RABBITMQ_DEFAULT_PASS: nexus_dev_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  kong:
+    image: kong:3.4-alpine
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+    ports:
+      - "8080:8000"
+      - "8001:8001"
+    volumes:
+      - ./infrastructure/kong:/kong/declarative
+    depends_on:
+      - identity-service
+      - tenant-service
+      - payroll-service
+
+  identity-service:
+    build:
+      context: ./services/identity-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_identity
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev_jwt_secret_key_change_in_production
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+      SERVICE_CLIENTS: "quickbooks:quickbooks_secret"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./services/identity-service:/app
+
+  tenant-service:
+    build:
+      context: ./services/tenant-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_tenant
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ./services/tenant-service:/app
+
+  payroll-service:
+    build:
+      context: ./services/payroll-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_payroll
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+      IDENTITY_SERVICE_URL: http://identity-service:3001
+    ports:
+      - "3003:3003"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+      - identity-service
+    volumes:
+      - ./services/payroll-service:/app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+
+volumes:
+  pgdata:
+  redis_data:
+  rabbitmq_data:

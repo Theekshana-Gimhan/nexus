@@ -78,6 +78,16 @@
 
 ### ⏸️ Phase 3: Frontend Application (NOT STARTED)
 
+### 🔗 Integrations / Connectors (NEW)
+
+- ✅ QuickBooks connector scaffolded (OAuth start/callback, sync routes, mapping helpers)
+- ✅ Database persistence implemented for connector (Knex-based repos, migrations and raw init scripts)
+- ✅ Local Postgres integration and verification (DB created, migrations/scripts run, mock token & tenant mapping inserted and validated)
+- ✅ Commits pushed to repository (changes for connector, DB, and runtime fixes)
+- ⚠️ In progress: runtime start stability across developer environments (TS/ESM + ts-node loader variations). Workarounds added (JS/CJS migration copies, dynamic import resilience, compiled dist), but a single unified dev start command is still pending.
+- ⚠️ Pending: token refresh worker, encrypted token storage, admin UI/endpoints for tenant mappings, and a one-command dev bootstrap (recommended: Docker Compose that starts DB, runs init, and starts connector)
+
+
 #### Frontend Framework Setup
 - ⚠️ **PENDING:** React + Vite + TypeScript setup
 - ⚠️ **PENDING:** Component library structure
@@ -144,6 +154,16 @@ npm run build         # Build all services
 npm run test          # Run all tests
 npm run lint          # Lint all code
 ```
+
+### One-command dev bootstrap (QuickBooks connector)
+
+To start a minimal development environment that brings up Postgres, initializes the QuickBooks connector database, and tails logs, run:
+
+```powershell
+npm run dev:bootstrap
+```
+
+This uses `docker-compose.dev.yml` (root) and the connector init script at `services/quickbooks-connector/scripts/init_db.mjs`.
 
 ## 🔧 Next Implementation Steps
 

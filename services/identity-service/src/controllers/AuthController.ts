@@ -306,6 +306,36 @@ export class AuthController {
   }
 
   /**
+   * Issue a service token via client credentials (simple implementation for dev)
+   */
+  public static async serviceToken(req: Request, res: Response): Promise<void> {
+    try {
+      const { clientId, clientSecret } = req.body as { clientId?: string; clientSecret?: string };
+  if (!clientId || !clientSecret) { res.status(400).json({ success: false, error: 'clientId and clientSecret required' }); return; }
+
+      const configured = (process.env.SERVICE_CLIENTS || '').split(',').map(s => s.split(':'));
+      const match = configured.find(([id, secret]) => id === clientId && secret === clientSecret);
+  if (!match) { res.status(401).json({ success: false, error: 'Invalid client credentials' }); return; }
+
+      // For service tokens, issue an access token with service-level roles/permissions
+      const payload = {
+        userId: `service:${clientId}`,
+        tenantId: null,
+        email: `${clientId}@services.nexus.local`,
+        roles: ['service'],
+        permissions: ['integrations:manage:connectors']
+      };
+
+  const token = jwt.sign(payload as any, AuthController.JWT_SECRET as string, { expiresIn: '1h' });
+  res.json({ success: true, data: { accessToken: token, expiresIn: 3600 } });
+  return;
+    } catch (error) {
+      logger.error('Service token error:', error);
+      res.status(500).json({ success: false, error: 'Service token error' });
+    }
+  }
+
+  /**
    * Get current user profile
    */
   public static async getProfile(req: Request, res: Response): Promise<void> {
