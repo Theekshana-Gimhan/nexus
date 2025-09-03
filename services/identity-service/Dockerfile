@@ -3,14 +3,18 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Install dependencies
+# Copy package files and install all deps (required for build)
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install
 
 # Copy source code
 COPY . .
 
 # Build the application
 RUN npm run build
+
+# Remove dev dependencies after build to keep image small
+RUN npm prune --production
 
 # Expose port
 EXPOSE 3001

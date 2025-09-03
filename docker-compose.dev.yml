@@ -53,24 +53,7 @@ services:
       - "5672:5672"
       - "15672:15672"
 
-  kong:
-    image: kong:3.4-alpine
-    environment:
-      KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
-      KONG_PROXY_ACCESS_LOG: /dev/stdout
-      KONG_ADMIN_ACCESS_LOG: /dev/stdout
-      KONG_PROXY_ERROR_LOG: /dev/stderr
-      KONG_ADMIN_ERROR_LOG: /dev/stderr
-    ports:
-      - "8080:8000"
-      - "8001:8001"
-    volumes:
-      - ./infrastructure/kong:/kong/declarative
-    depends_on:
-      - identity-service
-      - tenant-service
-      - payroll-service
+  # kong: omitted in dev compose due to image availability in this environment
 
   identity-service:
     build:

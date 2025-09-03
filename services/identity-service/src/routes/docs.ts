@@ -2,7 +2,14 @@ import { Router } from 'express';
 let swaggerUi: any = null;
 const path = require('path');
 const specPath = path.join(__dirname, '..', 'docs', 'openapi.json');
-const spec = require(specPath);
+let spec: any = {};
+try {
+  // attempt to load the generated OpenAPI spec; fall back to empty object in dev
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  spec = require(specPath);
+} catch (err) {
+  spec = { openapi: '3.0.0', info: { title: 'Identity Service', version: 'dev' }, paths: {} };
+}
 
 const router = Router();
 

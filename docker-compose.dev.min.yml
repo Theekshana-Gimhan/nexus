@@ -1,0 +1,84 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: nexus
+      POSTGRES_PASSWORD: nexus_dev_password
+      POSTGRES_DB: nexus_qbo_connector
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: nexus
+      RABBITMQ_DEFAULT_PASS: nexus_dev_password
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  identity-service:
+    build:
+      context: ./services/identity-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://nexus:nexus_dev_password@postgres:5432/nexus_identity
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev_jwt_secret_key_change_in_production
+      RABBITMQ_URL: amqp://nexus:nexus_dev_password@rabbitmq:5672
+      SERVICE_CLIENTS: "quickbooks:quickbooks_secret"
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+  # use image contents (built during `docker-compose build`) to avoid
+  # masking installed node_modules with a host bind mount on Windows
+
+  quickbooks-connector:
+    build:
+      context: ./services/quickbooks-connector
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=development
+      - PORT=3010
+      # Point to the Postgres instance that already has the QBO schema.
+      # Use host.docker.internal so the container connects to the DB mapped on the host (port 5432).
+      - DATABASE_URL=postgresql://nexus:nexus_dev_password@host.docker.internal:5432/nexus_qbo_connector
+      - JWT_SECRET=dev_jwt_secret_key_change_in_production
+      - SERVICE_CLIENT_ID=quickbooks
+      - SERVICE_CLIENT_SECRET=quickbooks_secret
+      - IDENTITY_BASE=http://identity-service:3001
+    ports:
+      - "3010:3010"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Use image-installed node_modules; avoid host bind mount which can mask
+    # image node_modules on Windows and break dev tools that rely on symlinks.
+    # For live editing, re-introduce a bind mount in a developer-specific compose.
+    command: ["sh", "-c", "npm run dev"]
+
+volumes:
+  pgdata:
+  redis_data:
+  rabbitmq_data:
+  

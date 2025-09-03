@@ -6,10 +6,8 @@ import { recordAudit } from '../repos/auditRepo';
 
 const router = express.Router();
 
-// protect all admin routes
-router.use(authenticateToken);
-
 // POST /api/admin/session - server-to-server session: connector exchanges its client credentials for a service token and sets cookie
+// This route is intentionally unauthenticated: it exchanges service client credentials for a token and sets an httpOnly cookie.
 router.post('/session', async (req, res) => {
   try {
     const identityBase = process.env.IDENTITY_BASE || 'http://identity-service:3001';
@@ -26,6 +24,9 @@ router.post('/session', async (req, res) => {
     res.status(500).json({ error: 'Failed to obtain session token' });
   }
 });
+
+// protect the remaining admin routes
+router.use(authenticateToken);
 
 router.get('/mappings', requirePermission('integrations:manage:connectors'), async (req, res) => {
   const knex = getKnex();

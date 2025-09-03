@@ -1,7 +1,7 @@
 # Nexus Platform Implementation Status
 
-**Generated:** September 2, 2025  
-**Status:** Phase 2 In Progress – Identity Service Auth & RBAC Implemented
+**Generated:** September 3, 2025  
+**Status:** Phase 2 In Progress – Identity Service Auth & RBAC Implemented; QuickBooks connector dev/run progress
 
 ## 🎯 Implementation Progress
 
@@ -82,10 +82,28 @@
 
 - ✅ QuickBooks connector scaffolded (OAuth start/callback, sync routes, mapping helpers)
 - ✅ Database persistence implemented for connector (Knex-based repos, migrations and raw init scripts)
-- ✅ Local Postgres integration and verification (DB created, migrations/scripts run, mock token & tenant mapping inserted and validated)
+- ✅ Admin API + tiny static admin UI implemented for tenant mappings (list / create / delete)
+- ✅ Server-to-server auth flow for service sessions added (Identity `/auth/service-token` and connector `/api/admin/session`) — admin UI uses httpOnly session cookie
+- ✅ Rate-limiting, request auditing (DB + repo), and request logging added to admin endpoints
+- ✅ Dev Docker Compose and a minimal compose variant created; iterative fixes applied (Dockerfile npm install changes, host port remap, ts-node/CJS adjustments)
+- ✅ Connector health endpoint verified (GET /health -> { status: 'ok' })
 - ✅ Commits pushed to repository (changes for connector, DB, and runtime fixes)
-- ⚠️ In progress: runtime start stability across developer environments (TS/ESM + ts-node loader variations). Workarounds added (JS/CJS migration copies, dynamic import resilience, compiled dist), but a single unified dev start command is still pending.
-- ⚠️ Pending: token refresh worker, encrypted token storage, admin UI/endpoints for tenant mappings, and a one-command dev bootstrap (recommended: Docker Compose that starts DB, runs init, and starts connector)
+- ⚠️ In progress / partial: migrations — `knex migrate` attempted against the compose Postgres; some migration files report as pending while migration attempts indicate existing tables (duplicate/replayed migrations or pre-existing schema). Migration reconciliation required (see "Recent verification" below).
+- ⚠️ In progress: runtime/start stability across developer environments (TS/ESM vs CJS): a working dev flow (ts-node) is in place in containers, but a single unified local start command for all developer OSes is still pending.
+- ⚠️ Pending: token refresh worker, encrypted token storage, hardened production session flow for admin UI, and a polished one-command dev bootstrap that is robust across Windows host bind-mount behavior.
+
+Recent verification
+- Connector process is running and responds on /health (tested locally against the minimal compose).
+- `knex migrate:latest` was run against the compose Postgres with explicit DB env — migration attempt failed reporting that core tables (e.g., `qbo_tokens`) already exist while `knex_migrations` shows migrations as pending. This indicates the schema already contains the tables (possibly from a previous manual init or partial run) but the migrations table wasn't marked. Next action: reconcile migrations by either migrating against a fresh DB, creating the `knex_migrations` entries for already-applied files, or writing idempotent migrations.
+
+Next steps (short list)
+1. Reconcile and apply connector migrations cleanly:
+   - Option A: point migrations at a fresh Postgres DB and run `knex migrate:latest` to establish baseline.
+   - Option B: insert rows into `knex_migrations` for already-applied migration files, then run remaining migrations.
+2. Validate admin flows end-to-end: call `/api/admin/session`, then list/create/delete mappings and verify audit rows in DB.
+3. Stabilize dev start for Windows developers: provide a dev-compose variant or documented workaround that preserves image node_modules or uses remote file sync (avoid host-mounted node_modules).
+4. Reintroduce or adapt API Gateway (Kong) in dev compose only after images/tags are validated for the environment.
+
 
 
 #### Frontend Framework Setup
