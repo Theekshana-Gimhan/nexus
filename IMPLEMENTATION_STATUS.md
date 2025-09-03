@@ -55,13 +55,14 @@
 - ✅ OpenAPI documentation with Swagger UI
 - ✅ Single-service dev mode (isolated from monorepo)
 
-#### Tenant Service (30% Complete)
+#### Tenant Service (60% Complete)
 - ✅ Service structure and configuration
 - ✅ Package.json and Docker setup
-- ⚠️ **PENDING:** Database models and migrations
-- ⚠️ **PENDING:** HTTP routes implementation
-- ⚠️ **PENDING:** Multi-tenant logic
-- ⚠️ **PENDING:** Subscription management
+- ✅ Database models and migrations (Knex migration added)
+- ✅ HTTP routes and controllers (tenant CRUD, users, subscription endpoints)
+- ✅ Unit tests (Jest/Supertest) for basic routes
+- ⚠️ **PENDING:** Multi-tenant enforcement and identity-integrated RBAC (tenant-specific permission checks)
+- ⚠️ **PENDING:** Billing & subscription automation (billing provider integration, webhooks)
 
 #### Payroll Service (10% Complete)
 - ⚠️ **PENDING:** Service structure setup
@@ -94,13 +95,31 @@
 
 Recent verification
 - Connector process is running and responds on /health (tested locally against the minimal compose).
-- `knex migrate:latest` was run against the compose Postgres with explicit DB env — migration attempt failed reporting that core tables (e.g., `qbo_tokens`) already exist while `knex_migrations` shows migrations as pending. This indicates the schema already contains the tables (possibly from a previous manual init or partial run) but the migrations table wasn't marked. Next action: reconcile migrations by either migrating against a fresh DB, creating the `knex_migrations` entries for already-applied files, or writing idempotent migrations.
+- `knex migrate:latest` was run against the compose Postgres with explicit DB env — migration attempt failed reporting that core tables (e.g., `qbo_tokens`) already exist while `knex_migrations` shows migrations as pending. This indicates the schema already contains the tables (possibly from a previous manual init or partial run) but the migrations table wasn't marked.
+
+Recent actions and decisions
+- Option chosen for verification: Option A — point the connector at the Postgres instance that already contains the QBO schema (host:5432 / `nexus-postgres-test`) so the service can run and admin flows can be exercised immediately. This avoids copying `knex_migrations` rows and allows fast end-to-end verification. Migration hygiene (Option B) remains listed as a follow-up for a clean long-term fix.
+- Identity DB created: the `nexus_identity` database was created in the compose Postgres and the Identity service was restarted so it could initialize successfully.
+- Admin session update: connector `POST /api/admin/session` was updated to perform the server-to-server service-token exchange and set an httpOnly `connector_token` cookie so the static admin UI can authenticate without paste flows.
+- Connector health: connector `/health` returns `{ "status": "ok", "service": "quickbooks-connector" }` in the minimal compose verification.
+- Git: recent changes were committed and pushed (commit c2c010e) including the compose adjustments, admin session change, identity docs resilience, and status updates.
+- Tenant service: added Knex migration files, a `tenant-migrate` one-shot in `docker-compose.dev.min.yml`, and a `README.md` with migration/run instructions.
+- Repo scripts: added root npm scripts for tenant migrations (`migrate:tenant`, `migrate:tenant:infra`, `migrate:tenant:up`) and a composite `setup:migrate` that runs identity migrations then tenant migrations.
+- Tests: added Jest global teardown (`tests/teardown.ts`) and test start guard to ensure tests exit cleanly; unit tests for tenant routes pass locally.
+- Admin session update: connector `POST /api/admin/session` was updated to perform the server-to-server service-token exchange and set an httpOnly `connector_token` cookie so the static admin UI can authenticate without paste flows.
+- Connector health: connector `/health` returns `{ "status": "ok", "service": "quickbooks-connector" }` in the minimal compose verification.
+- Git: recent changes were committed and pushed (commit c2c010e) including the compose adjustments, admin session change, identity docs resilience, and status updates.
 
 Next steps (short list)
 1. Reconcile and apply connector migrations cleanly:
-   - Option A: point migrations at a fresh Postgres DB and run `knex migrate:latest` to establish baseline.
-   - Option B: insert rows into `knex_migrations` for already-applied migration files, then run remaining migrations.
-2. Validate admin flows end-to-end: call `/api/admin/session`, then list/create/delete mappings and verify audit rows in DB.
+   - Short-term (current): Option A was used for verification — the connector points at the DB that already contains the schema so admin flows can be exercised.
+   - Long-term (follow-up): Option B or a migration-hygiene task — either insert correct `knex_migrations` rows for already-applied files, run migrations against a fresh DB, or convert migrations to idempotent scripts so deployments remain repeatable.
+2. Validate admin flows end-to-end now: obtain a service token from Identity, POST `/api/admin/session` to set the httpOnly cookie, then exercise GET/POST/DELETE on `/api/admin/mappings` and confirm `audit_logs` rows in the connector DB.
+3. Tenant migrations: use the new compose one-shot or repo script to run tenant migrations:
+   - `npm run migrate:tenant` (runs the `tenant-migrate` job in `docker-compose.dev.min.yml`)
+   - `npm run setup:migrate` (runs identity migrations then tenant migrations) — a one-command flow for infra + migrations.
+4. Stabilize dev start for Windows developers: provide a dev-compose variant or documented workaround that preserves image node_modules or uses remote file sync (avoid host-mounted node_modules).
+5. Reintroduce or adapt API Gateway (Kong) in dev compose only after images/tags are validated for the environment.
 3. Stabilize dev start for Windows developers: provide a dev-compose variant or documented workaround that preserves image node_modules or uses remote file sync (avoid host-mounted node_modules).
 4. Reintroduce or adapt API Gateway (Kong) in dev compose only after images/tags are validated for the environment.
 

@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { CONFIG } from '../config';
 import { TenantContext } from '../types';
+import { DatabaseService } from '../services/DatabaseService';
 
 interface AuthenticatedRequest extends Request {
   user?: {
@@ -37,25 +38,50 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
   }
 };
 
-export const requireTenantContext = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-  const tenantId = req.headers['x-tenant-id'] as string || req.params.tenantId;
-  
+export const requireTenantContext = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  const tenantId = (req.headers['x-tenant-id'] as string) || (req.params.id as string) || (req.params.tenantId as string);
+
   if (!tenantId) {
     res.status(400).json({ error: 'Tenant ID required' });
     return;
   }
 
-  // TODO: Validate user has access to this tenant
-  // This would typically involve checking the tenant_users table
-  
-  req.tenantContext = {
-    tenantId,
-    userId: req.user!.userId,
-    userRole: 'admin', // TODO: Get from tenant_users table
-    permissions: req.user!.permissions
-  };
+  // Require authenticated user for tenant-scoped operations
+  if (!req.user || !req.user.userId) {
+    res.status(401).json({ error: 'Authentication required for tenant operations' });
+    return;
+  }
 
-  next();
+  try {
+    const knex = DatabaseService.getInstance().getKnex();
+
+    // Verify tenant exists
+    const tenant = await knex('tenants').where('id', tenantId).first();
+    if (!tenant) {
+      res.status(404).json({ error: 'Tenant not found' });
+      return;
+    }
+
+    // Lookup tenant user role if present
+    const tenantUser = await knex('tenant_users')
+      .where({ tenant_id: tenantId, user_id: req.user.userId })
+      .first();
+
+    const userRole = tenantUser?.role || 'member';
+
+    req.tenantContext = {
+      tenantId,
+      userId: req.user.userId,
+      userRole,
+      permissions: req.user.permissions || []
+    } as TenantContext;
+
+    next();
+  } catch (error) {
+    console.error('Tenant context resolution error:', error);
+    res.status(500).json({ error: 'Failed to validate tenant context' });
+    return;
+  }
 };
 
 export const requirePermission = (permission: string) => {

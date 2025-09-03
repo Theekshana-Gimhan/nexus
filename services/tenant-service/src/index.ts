@@ -111,7 +111,9 @@ const startServer = async (): Promise<void> => {
   }
 };
 
-// Start the server
-startServer();
+// Start the server when not running under the test runner
+if (typeof process.env.JEST_WORKER_ID === 'undefined') {
+  startServer();
+}
 
 export default app;

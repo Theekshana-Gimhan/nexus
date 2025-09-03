@@ -23,6 +23,10 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
+  "migrate:tenant": "docker-compose -f docker-compose.dev.min.yml run --rm tenant-migrate",
+  "migrate:tenant:infra": "docker-compose -f docker-compose.dev.min.yml up -d postgres redis && npm run migrate:tenant",
+  "migrate:tenant:up": "npm run migrate:tenant:infra && docker-compose -f docker-compose.dev.min.yml up -d tenant-service",
+  "setup:migrate": "cd services/identity-service && npm run db:migrate || true && cd ../../ && npm run migrate:tenant:infra",
   "setup:db": "node scripts/setup-db.js",
   "dev:bootstrap": "node ./scripts/dev-bootstrap.js"
   },

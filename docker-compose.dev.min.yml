@@ -77,6 +77,23 @@ services:
     # For live editing, re-introduce a bind mount in a developer-specific compose.
     command: ["sh", "-c", "npm run dev"]
 
+  tenant-migrate:
+    build:
+      context: ./services/tenant-service
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: nexus_tenant
+      DB_USER: nexus
+      DB_PASSWORD: nexus_dev_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - postgres
+    command: ["sh", "-c", "npm run db:migrate"]
+
 volumes:
   pgdata:
   redis_data:
