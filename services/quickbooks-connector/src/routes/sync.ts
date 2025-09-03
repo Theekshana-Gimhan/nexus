@@ -25,9 +25,10 @@ router.get('/pull/invoices', async (req, res) => {
       await axios.post(`${process.env.NEXUS_GATEWAY_URL}/api/v1/invoices/bulk`, { invoices: mapped }, {
         headers: { Authorization: `Bearer ${process.env.NEXUS_SERVICE_ACCOUNT_TOKEN}` }
       });
-    } catch (err) {
+    } catch (err: unknown) {
       // Log but continue
-      console.warn('Failed to push invoices to Nexus', err.message || err);
+      const msg = err && typeof err === 'object' && 'message' in err ? (err as any).message : String(err);
+      console.warn('Failed to push invoices to Nexus', msg);
     }
     return res.json({ success: true, count: mapped.length, data: mapped });
   }
